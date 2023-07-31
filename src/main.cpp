@@ -9,6 +9,7 @@ const char* mqtt_server = "192.168.0.211";
 const char* clientId = "espSg600";
 const char* topicRoot = clientId;             // MQTT root topic for the device, keep / at the end
 const double timeout = 1800e6;
+const double timeout2 = 120e6;
 
 WiFiClient wifiMulti;
 PubSubClient client(wifiMulti);
@@ -147,6 +148,11 @@ void showNewData() {
   String box_id = String(int((rxData[I_BOX_ID] << 8) | rxData[I_BOX_ID + 1]), HEX);
   String inverter_id = String(int((rxData[I_INVERTER_ID] << 24) | (rxData[I_INVERTER_ID + 1] << 16) | (rxData[I_INVERTER_ID + 2] << 8) | rxData[I_INVERTER_ID + 3]), HEX);
 
+  if (!inverter_id.equals(Inverter_id)) {
+    delay(2000);
+    ESP.deepSleep(timeout2);
+  }
+
   const uint32_t tempTotal = rxData[10] << 24 | rxData[11] << 16 | rxData[12] << 8 | (rxData[13] & 0xFF);
   float totalGeneratedPower = *((float*)&tempTotal);
 
@@ -157,7 +163,11 @@ void showNewData() {
   float acVoltage = (rxData[19] << 8 | rxData[20]) / 100.0f;
   float acCurrent = (rxData[21] << 8 | rxData[22]) / 100.0f;
   float acPower = acVoltage * acCurrent;
-  float effe = acPower / dcPower * 100.0f;
+  float effe = 0.0f;
+
+  if (dcPower > 0.0001f) {
+    effe = acPower / dcPower * 100.0f;
+  }
 
   uint16_t temperature = rxData[26]; // not fully reversed
   
